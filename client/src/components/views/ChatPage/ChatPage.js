@@ -1,25 +1,30 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useMemo, useRef, useEffect} from 'react';
 import {Button, Col, Form, Icon, Input, Row} from "antd";
 import io from 'socket.io-client'
 import { connect } from "react-redux"
 import moment from "moment"
-import { getChats } from "../../../_actions/chat_actions";
+import { getChats, afterPostMessage } from "../../../_actions/chat_actions";
 import ChatCard from "./Sections/ChatCard";
 
-const ChatPage = ({ user, chat, getChats }) => {
+let server = 'http://localhost:5000/'
+const socket = io(server);
+
+const ChatPage = ({ user, chat, getChats, afterPostMessage }) => {
     const [chatMessage, setChatMessages] = useState('');
-    let server = 'http://localhost:5000/'
+    const messageEnd = useRef()
 
-
-
-    const socket = io(server);
-
-
-    useEffect(() => {
+    useMemo(() => {
         getChats()
         socket.on('Output Chat Message', messageFromBackEnd => {
-            console.log(messageFromBackEnd)
+            afterPostMessage(messageFromBackEnd)
         })
+
+
+    }, [socket]);
+    //
+
+    useEffect(() => {
+        messageEnd.current.scrollIntoView({behavior: 'smooth'})
     }, [chat]);
 
 
@@ -49,18 +54,17 @@ const ChatPage = ({ user, chat, getChats }) => {
             </div>
 
             <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-                <div className="infinite-container">
+                <div className="infinite-container" style={{ height: '500px', overflowY: 'auto' }}>
                     {chat.chats && chat.chats.map(c => (
-                        <ChatCardgi
+                        <ChatCard
                             key={c._id}
-                            sender={c.sender}
-                            message={c.message}
+                            {...c}
                         />
                     ))}
-                    {/*<div
-                        ref={el => { setMessagesEnd(el); }}
-                        style={{ float: 'left', clear: 'both'}}
-                        />*/}
+                    <div
+                        ref={messageEnd}
+                        style={{ float: 'left', clear: 'both' }}
+                    />
                 </div>
 
                 <Row>
@@ -93,7 +97,8 @@ const mapStateToProps = state => ({
     chat: state.chat
 })
 const mapDispatchToProps = dispatch => ({
-    getChats: () => dispatch(getChats())
+    getChats: () => dispatch(getChats()),
+    afterPostMessage: data => dispatch(afterPostMessage(data))
 })
 
 export default connect(
