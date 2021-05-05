@@ -5,6 +5,8 @@ import { connect } from "react-redux"
 import moment from "moment"
 import { getChats, afterPostMessage } from "../../../_actions/chat_actions";
 import ChatCard from "./Sections/ChatCard";
+import Dropzone from 'react-dropzone'
+import axios from "axios";
 
 let server = 'http://localhost:5000/'
 const socket = io(server);
@@ -47,6 +49,39 @@ const ChatPage = ({ user, chat, getChats, afterPostMessage }) => {
         })
         setChatMessages('')
     }
+
+    const onDrop = (files) => {
+        console.log(files)
+        let formData = new FormData;
+
+        const config = {
+            header: {
+                "contents-type": 'multipart/form-data'
+            }
+        }
+        formData.append("file", files[0])
+        return axios.post('api/chat/uploadfiles', formData, config)
+            .then(response => {
+                if(response.data.success) {
+                    let sendChatMessage = response.data.url;
+                    let userId = user.userData._id
+                    let userName = user.userData.name
+                    let userImage = user.userData.image
+                    let nowTime = moment()
+                    let type = "VideoOrImage"
+                    socket.emit("Input Chat Message", {
+                        sendChatMessage,
+                        userId,
+                        userName,
+                        userImage,
+                        nowTime,
+                        type
+                    })
+                }
+                console.log(response)
+            })
+    }
+
     return (
         <>
             <div>
@@ -79,7 +114,20 @@ const ChatPage = ({ user, chat, getChats, afterPostMessage }) => {
                                 onChange={e => setChatMessages(e.target.value)}
                                 />
                         </Col>
-                        <Col span={2}></Col>
+                        <Col span={2}>
+                            <Dropzone onDrop={onDrop}>
+                                {({getRootProps, getInputProps}) => (
+                                    <section>
+                                        <div {...getRootProps()}>
+                                            <input {...getInputProps()} />
+                                            <Button>
+                                                <Icon type="upload" />
+                                            </Button>
+                                        </div>
+                                    </section>
+                                )}
+                            </Dropzone>
+                        </Col>
                         <Col span={4}>
                             <Button type="primary" style={{ width: '100%' }} htmlType="submit">
                                 <Icon type="enter" />
@@ -90,7 +138,7 @@ const ChatPage = ({ user, chat, getChats, afterPostMessage }) => {
             </div>
         </>
     );
-};
+}
 
 const mapStateToProps = state => ({
     user: state.user,
